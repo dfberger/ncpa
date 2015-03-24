@@ -2,8 +2,9 @@ PYTHONVER = python2.7
 PIPVER = pip2.7
 SPHINXBIN = $(shell which sphinx-build)
 NCPAVER = $(shell cat ../VERSION.md)
+BUILDBRANCH = $(shell cat /vagrant/buildbranch || echo "master")
 INSTALLTARGET = /usr/local/ncpa/
-BUILDROOT = ~/rpmbuild
+BUILDROOT = /usr/src/redhat
 
 #BASEDIR = ~/Development/ncpa
 # Full path of the last Makefile make read. We haven't included other files, so that's us.
@@ -35,7 +36,8 @@ update_packages:
 	$(FLAGS) $(PIPVER) install -r $(BASEDIR)/requirements.txt --upgrade
 
 update_git:
-	git pull origin master
+	git pull
+	git checkout -f $(BUILDBRANCH)
 
 build_tarball: update_git update_packages build_exe
 	rm -rf ncpa-$(NCPAVER)
@@ -44,7 +46,7 @@ build_tarball: update_git update_packages build_exe
 
 build_spec: build_tarball
 	cat ncpa-partial.spec | sed s/__VERSION__/$(NCPAVER)/g | sed s@__BUILDROOT__@$(BUILDROOT)@g > ncpa.spec
-	
+
 clean:
 	rm -rf ncpa-$(NCPAVER)
 	rm -rf $(BASEDIR)/agent/build
@@ -67,7 +69,7 @@ build_rpm: build_spec
 	/bin/cp ncpa-$(NCPAVER).tar.gz $(BUILDROOT)/SOURCES/
 	rm -f $(BUILDROOT)/SPECS/ncpa.spec
 	/bin/cp -f ncpa.spec $(BUILDROOT)/SPECS/
-	QA_RPATHS='$[ 0x0002 ]' rpmbuild $(BUILDROOT)/SPECS/ncpa.spec -bb
+	QA_RPATHS='$[ 0x0002 ]' rpmbuild $(BUILDROOT)/SPECS/ncpa.spec -bb --define '_topdir /usr/src/redhat'
 	find $(BUILDROOT)/RPMS -name 'ncpa-$(NCPAVER)*' -exec cp {} . \;
 
 build_deb: build_rpm
